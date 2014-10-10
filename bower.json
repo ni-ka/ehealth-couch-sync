@@ -19,7 +19,6 @@
     ".eslintrc",
     "package.json",
     "Gruntfile.js",
-    "Gulpfile.js"
     ".gitignore"
   ],
   "dependencies": {
