@@ -1,0 +1,28 @@
+{
+  "name": "ehealth-couch-sync",
+  "version": "0.1.0",
+  "description": "ehealth-couch-sync",
+  "authors": [
+    "eHealth Africa <ehealthehealth>"
+  ],
+  "license": "ISC",
+  "private": true,
+  "homepage": "http://ehealthafrica.org",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eHealthAfrica/ehealth-couch-sync.git"
+  },
+  "license": "MIT",
+  "main": ["./src/ehealth-couch-sync.js"],
+  "ignore": [
+    "test",
+    ".eslintrc",
+    "package.json",
+    "Gruntfile.js",
+    "Gulpfile.js"
+    ".gitignore"
+  ],
+  "dependencies": {
+    "angular": ">=1.2.1"
+  }
+}
