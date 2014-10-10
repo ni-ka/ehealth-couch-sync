@@ -54,7 +54,9 @@ angular.module('ehealth-couch-sync', [])
       }
 
       function complete(changes) {
-        var docs = changes.results.map(function(row) { return row.doc; });
+        var docs = changes.results
+              .filter(function(row) { return !row.deleted; })
+              .map(function(row) { return row.doc; });
         return pouchdb.bulkDocs(docs).then(function() {
           replicate(replicateTwoway);
         });
