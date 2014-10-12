@@ -84,10 +84,9 @@ angular.module('ehealth-couch-sync', [])
     function initialize(replicateTwoway, progressCallback) {
       var changes = 0;
 
-      function change() {
-        changes++;
+      function change(progress) {
         if (progressCallback) {
-          progressCallback(changes);
+          progressCallback(progress.changes, progress.total);
         }
       }
 
@@ -334,6 +333,7 @@ angular.module('ehealth-couch-sync', [])
     function allChanges() {
       var deferred = $q.defer();
       var changes = 0;
+      var total = 0;
 
       var opts = {
         include_docs: true,
@@ -344,9 +344,11 @@ angular.module('ehealth-couch-sync', [])
         deferred.reject(reason);
       }
 
-      function change() {
-        changes++;
-        deferred.notify(changes);
+      function change(change) {
+        if (!change.deleted) {
+          changes++;
+          deferred.notify({changes: changes, total: total});
+        }
       }
 
       function complete(result) {
@@ -355,10 +357,16 @@ angular.module('ehealth-couch-sync', [])
       }
 
       var db = new $window.PouchDB(remoteCouch);
-      db.changes(opts)
-        .on('error', error)
-        .on('change', change)
-        .on('complete', complete);
+      db.info().then(function(info){
+        total = info.doc_count;
+
+        db.changes(opts)
+          .on('error', error)
+          .on('change', change)
+          .on('complete', complete);
+      }).catch(function(error) {
+        deferred.reject(error);        
+      })
 
       return deferred.promise;
     }
