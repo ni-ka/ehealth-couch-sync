@@ -4,6 +4,29 @@ angular.module('ehealth-couch-sync', [])
 
   .factory('sync', function($sessionStorage, $q, pouchdb) {
 
+    var self = this;
+    self.onChangeStatusCallbacks = [];
+    self.status = "offline";
+
+    function getStatus() {
+      return self.status;
+    }
+
+    function changeStatus(newStatus, param) {
+      self.status = newStatus;
+      self.onChangeStatusCallbacks.forEach(function(callback) {
+        callback(newStatus, param);
+      });
+    }
+
+    function onStatusChange(callback, remove) {
+      if (remove) {
+        self.onChangeStatusCallbacks.splice(self.onChangeStatusCallbacks.indexOf(callback), 1);
+      } else if (self.onChangeStatusCallbacks.indexOf(callback) === -1) { // Avoid adding the same callback twice
+        self.onChangeStatusCallbacks.push(callback);
+      }
+    }
+
     // Start listening to local database changes and replicate to and
     // (in the case of no call center users) from the remote couchdb database.
     // The replication from the remote database is done in two steps.
@@ -13,14 +36,29 @@ angular.module('ehealth-couch-sync', [])
 
     function replicate(twoway) {
       pouchdb.listenToChanges();
+      pouchdb.onSync('error', 'from', function(error) {
+        changeStatus("offline", error);
+      });
       pouchdb.replicate('to', {live: true});
 
       var options = {};
 
       function startLiveSync() {
+        changeStatus("online");
+
         pouchdb.onSync('complete', 'from', startLiveSync, {remove: true});
         options.live = true;
         pouchdb.replicate('from', options);
+        
+        pouchdb.onSync('error', 'from', function(error) {
+          changeStatus("offline", error);
+        });
+        pouchdb.onSync('change', 'from', function() {
+          changeStatus("sync");
+        });
+        pouchdb.onSync('uptodate', 'from', function() {
+          changeStatus("online");
+        });
       }
 
       if (twoway) {
@@ -57,10 +95,13 @@ angular.module('ehealth-couch-sync', [])
         var docs = changes.results
               .filter(function(row) { return !row.deleted; })
               .map(function(row) { return row.doc; });
+
         return pouchdb.bulkDocs(docs).then(function() {
           replicate(replicateTwoway);
         });
       }
+
+      changeStatus("sync");
 
       return wasInitialized().then(function(initialized) {
         if (initialized) {
@@ -73,10 +114,12 @@ angular.module('ehealth-couch-sync', [])
     }
 
     return {
-      initialize: initialize
+      initialize: initialize,
+      onStatusChange: onStatusChange,
+      getStatus: getStatus,
+      changeStatus: changeStatus
     };
   })
-
 
 
   .factory('pouchdb', function($sessionStorage, $q, $window, SETTINGS) {
